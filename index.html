@@ -6,7 +6,7 @@ Stripe checkout links require an internet connection. Automatic subscription
 verification requires a separate secure backend and is not provided by this file.
 Original server-only routes are not needed by this no-sign-in builder.
 -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Build a custom AI employee prompt with the role, personality, and look that fit your vision."><title>RAPL — Build Your AI Empire</title><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9IiMxMDI1MWYiLz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZThiODU4IiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cGF0aCBkPSJNMjAgMTdoMTZjOSAwIDE0IDUgMTQgMTIgMCA2LTQgMTAtMTAgMTFsMTEgOGgtOUwzMSA0MGgtM3Y4aC04VjE3Wm04IDd2MTBoOGM0IDAgNi0yIDYtNXMtMi01LTYtNWgtOFoiIGZpbGw9IiNmN2RkYTAiLz4KPC9zdmc+Cg=="><style>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Build a custom AI employee prompt with the role, personality, and look that fit your vision."><title>RAPL — Build Your AI Empire</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="rapl-auth.js"></script><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9IiMxMDI1MWYiLz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZThiODU4IiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cGF0aCBkPSJNMjAgMTdoMTZjOSAwIDE0IDUgMTQgMTIgMCA2LTQgMTAtMTAgMTFsMTEgOGgtOUwzMSA0MGgtM3Y4aC04VjE3Wm04IDd2MTBoOGM0IDAgNi0yIDYtNXMtMi01LTYtNWgtOFoiIGZpbGw9IiNmN2RkYTAiLz4KPC9zdmc+Cg=="><style>
 /*! tailwindcss v4.2.1 | MIT License | https://tailwindcss.com */
 @layer properties;
 @layer theme, base, components, utilities;
@@ -14007,22 +14007,40 @@ Introduce yourself briefly using your chosen name and personality, then ask what
     }
     async function generate() {
       if (building.current) return;
-      const count = Math.max(usageRef.current, savedUsage());
-      if (count >= 3) {
-        setUsed(count);
-        setView("paywall");
-        return;
-      }
       building.current = true;
       setError("");
+      let draftIsValid = true;
+      try {
+        buildPrompt(draft);
+      } catch {
+        draftIsValid = false;
+      }
+      let gate = { allowed: true, unlimited: false, free_used: usageRef.current };
+      if (draftIsValid) {
+        try {
+          if (!window.RAPL) throw new Error("RAPL couldn\u2019t load. Refresh the page and try again.");
+          gate = await window.RAPL.useBuild();
+        } catch (gateError) {
+          building.current = false;
+          setError(gateError instanceof Error ? gateError.message : "Something went wrong. Try again.");
+          setView("error");
+          return;
+        }
+        if (!gate) {
+          building.current = false;
+          return;
+        }
+        if (!gate.allowed) {
+          building.current = false;
+          setUsed(3);
+          setView("paywall");
+          return;
+        }
+      }
       setView("generating");
       try {
         const prompt = buildPrompt(draft);
-        usageRef.current = count + 1;
-        try {
-          localStorage.setItem(USAGE_KEY, String(usageRef.current));
-        } catch {
-        }
+        usageRef.current = gate.unlimited ? 0 : gate.free_used || 0;
         setUsed(usageRef.current);
         setFinishedPrompt(prompt);
         setCopied(false);
@@ -14180,7 +14198,7 @@ Introduce yourself briefly using your chosen name and personality, then ask what
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "builder-actions", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "secondary", onClick: startOver, children: "Create another avatar \u2197" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vault-offer", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Want more ready-to-use inspiration?" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "secondary", href: AVATAR_VAULT_URL, target: "_blank", rel: "noreferrer", children: "Get The Avatar Vault \u2014 $5/month \u2197" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "secondary", href: window.RAPL ? window.RAPL.checkoutUrl(AVATAR_VAULT_URL) : AVATAR_VAULT_URL, target: "_blank", rel: "noreferrer", children: "Get The Avatar Vault \u2014 $5/month \u2197" })
           ] })
         ] }),
         view === "paywall" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "paywall", children: [
@@ -14192,11 +14210,29 @@ Introduce yourself briefly using your chosen name and personality, then ask what
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "/ month" })
           ] }),
           error && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "notice error", children: error }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "primary", href: UNLIMITED_URL, target: "_blank", rel: "noreferrer", children: "Unlock Unlimited Builds \u2197" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "primary", href: window.RAPL ? window.RAPL.checkoutUrl(UNLIMITED_URL) : UNLIMITED_URL, target: "_blank", rel: "noreferrer", children: "Unlock Unlimited Builds \u2197" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "checkout-note", children: "Secure checkout powered by Stripe." }),
+          /* RAPL account actions */ (0, import_jsx_runtime.jsxs)("div", { className: "builder-actions", style: { justifyContent: "center", flexWrap: "wrap" }, children: [
+            (0, import_jsx_runtime.jsx)("button", { className: "ghost", onClick: async () => {
+              const st = window.RAPL ? await window.RAPL.refresh() : null;
+              if (st && st.unlimited) {
+                setError("");
+                setView("builder");
+              } else {
+                setError("We don\u2019t see an active Unlimited plan on " + (st && st.email || "this account") + " yet. Payments can take a minute to show up. Use the same email you paid with, then tap refresh again.");
+              }
+            }, children: "Already paid? Refresh my access" }),
+            (0, import_jsx_runtime.jsx)("button", { className: "ghost", onClick: async () => {
+              const ok = window.RAPL ? await window.RAPL.openRedeem() : false;
+              if (ok) {
+                setError("");
+                setView("builder");
+              }
+            }, children: "Have an AppSumo code?" })
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vault-offer", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Prefer the separate prompt collection?" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "secondary", href: AVATAR_VAULT_URL, target: "_blank", rel: "noreferrer", children: "Get The Avatar Vault \u2014 $5/month \u2197" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "secondary", href: window.RAPL ? window.RAPL.checkoutUrl(AVATAR_VAULT_URL) : AVATAR_VAULT_URL, target: "_blank", rel: "noreferrer", children: "Get The Avatar Vault \u2014 $5/month \u2197" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "The Vault does not change your build limit." })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "ghost", onClick: startOver, children: "Start over" }) })
